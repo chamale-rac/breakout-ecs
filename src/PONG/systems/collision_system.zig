@@ -61,14 +61,18 @@ pub const CollisionSystem = struct {
     }
 
     fn checkWallCollision(self: *CollisionSystem, ball_pos: *components.Position, ball_vel: *components.Velocity, ball_size: *components.Size, ball: *components.Ball) void {
-        // Left and right walls - Game over
-        if (ball_pos.x <= 0 or ball_pos.x + ball_size.width >= self.screen_width) {
-            self.game_over.* = true;
-            std.debug.print("Game Over! Ball hit left or right wall!\n", .{});
-            return;
+        // Left and right walls - bounce and increase speed
+        if (ball_pos.x <= 0) {
+            ball_pos.x = 0;
+            ball_vel.x = -ball_vel.x;
+            self.increaseBallSpeed(ball_vel, ball);
+        } else if (ball_pos.x + ball_size.width >= self.screen_width) {
+            ball_pos.x = self.screen_width - ball_size.width;
+            ball_vel.x = -ball_vel.x;
+            self.increaseBallSpeed(ball_vel, ball);
         }
 
-        // Top wall
+        // Top wall - bounce and increase speed
         if (ball_pos.y <= 0) {
             ball_pos.y = 0;
             ball_vel.y = -ball_vel.y;

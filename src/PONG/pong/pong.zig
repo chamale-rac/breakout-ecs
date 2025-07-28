@@ -68,7 +68,7 @@ pub const PongGame = struct {
         try self.world.addComponent(self.paddle_entity, components.Position, components.Position.init(self.screen_width / 2 - 50, self.screen_height - 50));
         try self.world.addComponent(self.paddle_entity, components.Size, components.Size.init(100, 20));
         try self.world.addComponent(self.paddle_entity, components.Color, components.Color.init(255, 255, 255, 255));
-        try self.world.addComponent(self.paddle_entity, components.Paddle, components.Paddle.init(400));
+        try self.world.addComponent(self.paddle_entity, components.Paddle, components.Paddle.init(800));
         try self.world.addComponent(self.paddle_entity, components.Renderable, components.Renderable.init());
 
         // Create ball
