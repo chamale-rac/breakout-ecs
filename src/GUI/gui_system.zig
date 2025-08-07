@@ -134,37 +134,7 @@ pub const GuiSystem = struct {
 
             dvui.label(@src(), "Active Entities: {d}", .{self.entities_list.items.len}, .{ .font_style = .heading });
 
-            // Search functionality - Use buttons for common searches for now
-            dvui.label(@src(), "Quick Search:", .{}, .{});
-
-            if (dvui.button(@src(), "Show All", .{}, .{ .id_extra = 1000 })) {
-                self.search_text_len = 0; // Clear search
-            }
-
-            if (dvui.button(@src(), "Paddle", .{}, .{ .id_extra = 1001 })) {
-                const search_term = "paddle";
-                @memcpy(self.search_buffer[0..search_term.len], search_term);
-                self.search_text_len = search_term.len;
-            }
-
-            if (dvui.button(@src(), "Ball", .{}, .{ .id_extra = 1002 })) {
-                const search_term = "ball";
-                @memcpy(self.search_buffer[0..search_term.len], search_term);
-                self.search_text_len = search_term.len;
-            }
-
-            if (dvui.button(@src(), "Block", .{}, .{ .id_extra = 1003 })) {
-                const search_term = "block";
-                @memcpy(self.search_buffer[0..search_term.len], search_term);
-                self.search_text_len = search_term.len;
-            }
-
-            if (dvui.button(@src(), "Wall", .{}, .{ .id_extra = 1004 })) {
-                const search_term = "wall";
-                @memcpy(self.search_buffer[0..search_term.len], search_term);
-                self.search_text_len = search_term.len;
-            }
-
+            // Search functionality
             _ = dvui.separator(@src(), .{});
 
             // Text entry for custom search
@@ -246,7 +216,9 @@ pub const GuiSystem = struct {
         const entity = self.selected_entity.?;
         const world = self.world.?;
 
-        var float = dvui.floatingWindow(@src(), .{}, .{ .min_size_content = .{ .w = 400, .h = 500 } });
+        var float = dvui.floatingWindow(@src(), .{}, .{
+            .min_size_content = .{ .w = 200, .h = 300 },
+        });
         defer float.deinit();
 
         var title_buffer: [64]u8 = undefined;
