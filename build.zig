@@ -25,7 +25,14 @@ pub fn build(b: *std.Build) !void {
         const raylib = raylib_dep.module("raylib"); // main raylib module
         const raygui = raylib_dep.module("raygui"); // raygui module
 
-        // Add ECS module (our own implementation)
+        // Add DVUI dependency
+        const dvui_dep = b.dependency("dvui", .{
+            .target = target,
+            .optimize = optimize,
+            .backend = .raylib,
+        });
+
+        // Add ECS module (own implementation)
         const ecs_module = b.addModule("ecs", .{
             .root_source_file = b.path("src/ECS/ecs.zig"),
         });
@@ -64,12 +71,24 @@ pub fn build(b: *std.Build) !void {
             .root_source_file = b.path("src/SCENE/scene/scene.zig"),
         });
 
+        // Add GUI module
+        const gui_module = b.addModule("gui", .{
+            .root_source_file = b.path("src/GUI/gui_system.zig"),
+            .imports = &.{
+                .{ .name = "raylib", .module = raylib },
+                .{ .name = "dvui", .module = dvui_dep.module("dvui_raylib") },
+                .{ .name = "ecs", .module = ecs_module },
+                .{ .name = "pong_components", .module = pong_components_module },
+            },
+        });
+
         // Add GAME module
         const game_module = b.addModule("game", .{
             .root_source_file = b.path("src/GAME/game/game.zig"),
             .imports = &.{
                 .{ .name = "raylib", .module = raylib },
                 .{ .name = "pong", .module = pong_module },
+                .{ .name = "gui", .module = gui_module },
             },
         });
 
@@ -78,11 +97,13 @@ pub fn build(b: *std.Build) !void {
         // Add modules to the executable
         exe.root_module.addImport("raylib", raylib);
         exe.root_module.addImport("raygui", raygui);
+        exe.root_module.addImport("dvui", dvui_dep.module("dvui_raylib"));
         exe.root_module.addImport("ecs", ecs_module);
         exe.root_module.addImport("pong_components", pong_components_module);
         exe.root_module.addImport("pong_systems", pong_systems_module);
         exe.root_module.addImport("pong", pong_module);
         exe.root_module.addImport("scene", scene_module);
+        exe.root_module.addImport("gui", gui_module);
         exe.root_module.addImport("game", game_module);
 
         // Link the raylib C library

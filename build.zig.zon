@@ -12,6 +12,10 @@
             .url = "git+https://github.com/Not-Nik/raylib-zig?ref=devel#5013830647196ba938a3a25a36b8245606e9a9cd",
             .hash = "raylib_zig-5.6.0-dev-KE8REM0tBQAHVn9Xjqlgu9l1qgfTmP8aJa1kLhD584bV",
         },
+        .dvui = .{
+            .url = "git+https://github.com/david-vanderson/dvui#5d497f249a085c1a96ef84c409812b95ea175bc0",
+            .hash = "dvui-0.2.0-AQFJmZOT0gBf-LsHD2yJxUeAxx1NOgFW-CN4KkfZP9Y9",
+        },
     },
     .paths = .{
         "build.zig",

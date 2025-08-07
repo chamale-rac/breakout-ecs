@@ -1,6 +1,8 @@
 const std = @import("std");
 const raylib = @import("raylib");
 const PongGame = @import("../../PONG/pong/pong.zig").PongGame;
+const GuiSystem = @import("../../GUI/gui_system.zig").GuiSystem;
+const gui_system_module = @import("../../GUI/gui_system.zig");
 
 pub const Game = struct {
     screen_width: i32,
@@ -10,6 +12,7 @@ pub const Game = struct {
     delta_time: f32,
     fps: f32,
     pong_game: PongGame,
+    gui_system: GuiSystem,
     fps_buffer: [32]u8,
     allocator: std.mem.Allocator,
 
@@ -19,8 +22,9 @@ pub const Game = struct {
         std.debug.print("Breakout Game Start!\n", .{});
 
         const pong_game = try PongGame.init(allocator, @floatFromInt(width), @floatFromInt(height));
+        const gui_system = try GuiSystem.init(allocator);
 
-        return Game{
+        var game = Game{
             .screen_width = width,
             .screen_height = height,
             .is_running = true,
@@ -28,12 +32,19 @@ pub const Game = struct {
             .delta_time = 0.0,
             .fps = 0.0,
             .pong_game = pong_game,
+            .gui_system = gui_system,
             .fps_buffer = undefined,
             .allocator = allocator,
         };
+
+        // Set world reference after creating the game
+        game.gui_system.setWorld(@constCast(&game.pong_game.world));
+
+        return game;
     }
 
     pub fn deinit(self: *Game) void {
+        self.gui_system.deinit();
         self.pong_game.deinit();
         self.clean();
     }
@@ -56,10 +67,24 @@ pub const Game = struct {
         if (raylib.windowShouldClose() or raylib.isKeyPressed(.escape)) {
             self.is_running = false;
         }
+
+        // Toggle GUI windows with function keys
+        if (raylib.isKeyPressed(.f1)) {
+            self.gui_system.show_pause_controls = !self.gui_system.show_pause_controls;
+        }
+        if (raylib.isKeyPressed(.f2)) {
+            self.gui_system.show_entity_window = !self.gui_system.show_entity_window;
+        }
+        if (raylib.isKeyPressed(.f3)) {
+            self.gui_system.show_debug_window = !self.gui_system.show_debug_window;
+        }
     }
 
     pub fn update(self: *Game) void {
-        self.pong_game.update(self.delta_time);
+        // Only update game logic if not paused
+        if (!gui_system_module.game_paused) {
+            self.pong_game.update(self.delta_time);
+        }
 
         if (self.pong_game.isGameOver()) {
             // Allow ESC to exit even after game over
@@ -67,6 +92,9 @@ pub const Game = struct {
                 self.is_running = false;
             }
         }
+
+        // Update GUI system world reference even when paused
+        self.gui_system.setWorld(@constCast(&self.pong_game.world));
     }
 
     pub fn render(self: *Game) void {
@@ -81,6 +109,15 @@ pub const Game = struct {
             self.fps_buffer[fps_text.len] = 0;
         }
         raylib.drawText(fps_text.ptr[0..fps_text.len :0], 10, 10, 20, raylib.Color.dark_gray);
+
+        // Show GUI controls hint
+        const gui_hint = "F1: Pause Controls  F2: Entity Inspector  F3: Debug Window";
+        raylib.drawText(gui_hint, 10, 30, 16, raylib.Color.dark_gray);
+
+        // Render GUI system
+        self.gui_system.render() catch |err| {
+            std.debug.print("GUI render error: {}\n", .{err});
+        };
 
         raylib.endDrawing();
     }
