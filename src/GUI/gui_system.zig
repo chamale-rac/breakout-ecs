@@ -26,6 +26,10 @@ pub const GuiSystem = struct {
     selected_entity: ?Entity = null,
     entities_list: std.ArrayList(Entity),
 
+    // Search functionality
+    search_buffer: [64]u8 = [_]u8{0} ** 64,
+    search_text_len: usize = 0,
+
     pub fn init(allocator: std.mem.Allocator) !GuiSystem {
         return GuiSystem{
             .allocator = allocator,
@@ -88,7 +92,11 @@ pub const GuiSystem = struct {
     fn renderGUI(self: *GuiSystem) !void {
         // Render pause controls floating window
         if (self.show_pause_controls) {
-            var float = dvui.floatingWindow(@src(), .{}, .{ .min_size_content = .{ .w = 200, .h = 140 } });
+            // Try to position in top right by using a specific anchor
+            var float = dvui.floatingWindow(@src(), .{}, .{
+                .min_size_content = .{ .w = 200, .h = 140 },
+                .expand = .none, // Don't expand to fill space
+            });
             defer float.deinit();
 
             _ = dvui.windowHeader("Game Controls", "", &self.show_pause_controls);
@@ -125,12 +133,80 @@ pub const GuiSystem = struct {
             const world = self.world.?;
 
             dvui.label(@src(), "Active Entities: {d}", .{self.entities_list.items.len}, .{ .font_style = .heading });
+
+            // Search functionality - Use buttons for common searches for now
+            dvui.label(@src(), "Quick Search:", .{}, .{});
+
+            if (dvui.button(@src(), "Show All", .{}, .{ .id_extra = 1000 })) {
+                self.search_text_len = 0; // Clear search
+            }
+
+            if (dvui.button(@src(), "Paddle", .{}, .{ .id_extra = 1001 })) {
+                const search_term = "paddle";
+                @memcpy(self.search_buffer[0..search_term.len], search_term);
+                self.search_text_len = search_term.len;
+            }
+
+            if (dvui.button(@src(), "Ball", .{}, .{ .id_extra = 1002 })) {
+                const search_term = "ball";
+                @memcpy(self.search_buffer[0..search_term.len], search_term);
+                self.search_text_len = search_term.len;
+            }
+
+            if (dvui.button(@src(), "Block", .{}, .{ .id_extra = 1003 })) {
+                const search_term = "block";
+                @memcpy(self.search_buffer[0..search_term.len], search_term);
+                self.search_text_len = search_term.len;
+            }
+
+            if (dvui.button(@src(), "Wall", .{}, .{ .id_extra = 1004 })) {
+                const search_term = "wall";
+                @memcpy(self.search_buffer[0..search_term.len], search_term);
+                self.search_text_len = search_term.len;
+            }
+
             _ = dvui.separator(@src(), .{});
 
-            // List all entities
+            // Text entry for custom search
+            dvui.label(@src(), "Custom Search:", .{}, .{});
+            {
+                var text_entry = dvui.textEntry(@src(), .{}, .{ .expand = .horizontal, .min_size_content = .{ .w = 200, .h = 25 } });
+                defer text_entry.deinit();
+
+                // Get the current text from the text entry
+                const current_text = text_entry.getText();
+                if (current_text.len != self.search_text_len or !std.mem.eql(u8, current_text, self.search_buffer[0..self.search_text_len])) {
+                    // Text has changed, update our search buffer
+                    if (current_text.len <= self.search_buffer.len) {
+                        @memcpy(self.search_buffer[0..current_text.len], current_text);
+                        if (current_text.len < self.search_buffer.len) {
+                            self.search_buffer[current_text.len] = 0;
+                        }
+                        self.search_text_len = current_text.len;
+                    }
+                }
+            }
+
+            // Show current search filter
+            if (self.search_text_len > 0) {
+                const search_text = self.search_buffer[0..self.search_text_len];
+                dvui.label(@src(), "Filtering by: {s}", .{search_text}, .{ .color_text = .{ .color = .{ .r = 0, .g = 255, .b = 0, .a = 255 } } });
+            }
+
+            _ = dvui.separator(@src(), .{});
+
+            // List all entities (with filtering)
             for (self.entities_list.items, 0..) |entity, i| {
                 var entity_name_buffer: [64]u8 = undefined;
                 const entity_name = self.getEntityDisplayName(entity, &entity_name_buffer);
+
+                // Filter by search text if any
+                if (self.search_text_len > 0) {
+                    const search_text = self.search_buffer[0..self.search_text_len];
+                    if (!self.containsIgnoreCase(entity_name, search_text)) {
+                        continue; // Skip this entity if it doesn't match search
+                    }
+                }
 
                 // Check if this entity is selected
                 const is_selected = if (self.selected_entity) |selected| selected.id == entity.id else false;
@@ -320,38 +396,60 @@ pub const GuiSystem = struct {
             }
         }
     }
-    
+
     fn getEntityDisplayName(self: *GuiSystem, entity: Entity, buffer: []u8) []const u8 {
         if (self.world == null) {
             return std.fmt.bufPrint(buffer, "Entity {d}", .{entity.id}) catch "Entity";
         }
-        
+
         const world = self.world.?;
-        
+
         // Check for specific component combinations to determine entity type
         if (world.hasComponent(entity, components.Paddle)) {
             return std.fmt.bufPrint(buffer, "Paddle {d}", .{entity.id}) catch "Paddle";
         }
-        
+
         if (world.hasComponent(entity, components.Ball)) {
             return std.fmt.bufPrint(buffer, "Ball {d}", .{entity.id}) catch "Ball";
         }
-        
+
         if (world.hasComponent(entity, components.Block)) {
             return std.fmt.bufPrint(buffer, "Block {d}", .{entity.id}) catch "Block";
         }
-        
+
         // Check for walls (entities with Position, Size, Color but no specific game components)
-        if (world.hasComponent(entity, components.Position) and 
-            world.hasComponent(entity, components.Size) and 
+        if (world.hasComponent(entity, components.Position) and
+            world.hasComponent(entity, components.Size) and
             world.hasComponent(entity, components.Color) and
             !world.hasComponent(entity, components.Paddle) and
             !world.hasComponent(entity, components.Ball) and
-            !world.hasComponent(entity, components.Block)) {
+            !world.hasComponent(entity, components.Block))
+        {
             return std.fmt.bufPrint(buffer, "Wall {d}", .{entity.id}) catch "Wall";
         }
-        
+
         // Default fallback
         return std.fmt.bufPrint(buffer, "Entity {d}", .{entity.id}) catch "Entity";
+    }
+
+    fn containsIgnoreCase(self: *GuiSystem, haystack: []const u8, needle: []const u8) bool {
+        _ = self; // Suppress unused parameter warning
+
+        if (needle.len == 0) return true;
+        if (haystack.len < needle.len) return false;
+
+        var i: usize = 0;
+        while (i <= haystack.len - needle.len) : (i += 1) {
+            var match = true;
+            for (needle, 0..) |needle_char, j| {
+                const haystack_char = haystack[i + j];
+                if (std.ascii.toLower(haystack_char) != std.ascii.toLower(needle_char)) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) return true;
+        }
+        return false;
     }
 };
