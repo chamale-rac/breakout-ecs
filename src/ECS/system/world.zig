@@ -128,4 +128,43 @@ pub const World = struct {
 
         return entities;
     }
+
+    // Get all active entities (for GUI inspection)
+    pub fn getAllActiveEntities(self: *World, allocator: std.mem.Allocator) !std.ArrayList(Entity) {
+        var entities = std.ArrayList(Entity).init(allocator);
+        var entity_set = std.AutoHashMap(u32, void).init(allocator);
+        defer entity_set.deinit();
+
+        // Collect all entity IDs from component storages
+        for (self.component_storages.items) |storage| {
+            for (storage.index_to_entity.items) |entity_id| {
+                try entity_set.put(entity_id, {});
+            }
+        }
+
+        // Convert to entity list
+        var iterator = entity_set.iterator();
+        while (iterator.next()) |entry| {
+            try entities.append(Entity.init(entry.key_ptr.*));
+        }
+
+        return entities;
+    }
+
+    // Get component type name for display
+    pub fn getComponentTypeName(self: *World, type_id: u32) []const u8 {
+        _ = self;
+        // Simple mapping for now - could be extended
+        return switch (type_id) {
+            0 => "Position",
+            1 => "Velocity",
+            2 => "Size",
+            3 => "Color",
+            4 => "Paddle",
+            5 => "Ball",
+            6 => "Block",
+            7 => "Renderable",
+            else => "Unknown",
+        };
+    }
 };

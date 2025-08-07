@@ -76,7 +76,7 @@ pub const Game = struct {
             self.gui_system.show_entity_window = !self.gui_system.show_entity_window;
         }
         if (raylib.isKeyPressed(.f3)) {
-            self.gui_system.show_debug_window = !self.gui_system.show_debug_window;
+            self.gui_system.show_entity_inspector = !self.gui_system.show_entity_inspector;
         }
     }
 
@@ -111,7 +111,7 @@ pub const Game = struct {
         raylib.drawText(fps_text.ptr[0..fps_text.len :0], 10, 10, 20, raylib.Color.dark_gray);
 
         // Show GUI controls hint
-        const gui_hint = "F1: Pause Controls  F2: Entity Inspector  F3: Debug Window";
+        const gui_hint = "F1: Controls  F2: Entity List  F3: Inspector";
         raylib.drawText(gui_hint, 10, 30, 16, raylib.Color.dark_gray);
 
         // Render GUI system
